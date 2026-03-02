@@ -134,11 +134,12 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         voucherOrder.setUserId(userId);
         //2.5.代金券id
         voucherOrder.setVoucherId(voucherId);
-        //2.6.放入阻塞队列
-        IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();
 
-        orderTasks.add(voucherOrder);
         //3获取代理对象（事务）
+        proxy = (IVoucherOrderService) AopContext.currentProxy();
+        //2.6.放入阻塞队列
+        orderTasks.add(voucherOrder);
+
 
 
         //4.返回订单id
@@ -186,12 +187,12 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     }*/
     @Transactional
     public void createVoucherOrder(VoucherOrder voucherOrder) {
-        //5.一人一单
-        Long userId = UserHolder.getUser().getId();
+        Long userId = voucherOrder.getUserId();
+        Long voucherId = voucherOrder.getVoucherId();
 
 
             //5.1.查询订单
-            int count = query().eq("user_id", userId).eq("voucher_id", voucherOrder).count();
+            int count = query().eq("user_id", userId).eq("voucher_id", voucherId).count();
             //5.2.判断订单是否存在
             if (count > 0) {
                 //用户已经购买过了
@@ -201,7 +202,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             //6.扣减库存
             boolean success = seckillVoucherService.update()
                     .setSql("stock = stock - 1") // set stock = stock - 1
-                    .eq("voucher_id", voucherOrder).gt("stock", 0) //where id = ? and stock > 0
+                    .eq("voucher_id", voucherId).gt("stock", 0) //where id = ? and stock > 0
                     .update();
             if (!success) {
                 //扣减失败
